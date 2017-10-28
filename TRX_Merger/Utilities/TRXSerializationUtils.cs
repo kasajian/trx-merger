@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
@@ -123,18 +124,30 @@ namespace TRX_Merger.Utilities
                 XDocument doc = XDocument.Load(trxStream);
                 var run = doc.Root;
 
-                testRun.Id = run.Attribute("id").Value;
-                testRun.Name = run.Attribute("name").Value;
-                testRun.RunUser = run.Attribute("runUser").Value;
+                testRun.Id = run?.Attribute("id")?.Value ?? Guid.NewGuid().ToString();
+                testRun.Name = run?.Attribute("name")?.Value ?? @"unknown.unknown@unknownnode01 " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                testRun.RunUser = run?.Attribute("runUser")?.Value ?? @"unk\unknown";
 
-                testRun.Times = DeserializeTimes(doc.Descendants(ns + "Times").FirstOrDefault());
-                testRun.Results = DeserializeResults(doc.Descendants(ns + "UnitTestResult"));
-                testRun.TestDefinitions = DeserializeTestDefinitions(doc.Descendants(ns + "UnitTest"));
-                testRun.TestEntries = DeserializeTestEntries(doc.Descendants(ns + "TestEntry"));
-                testRun.TestLists = DeserializeTestLists(doc.Descendants(ns + "TestList"));
-                testRun.ResultSummary = DeserializeResultSummary(doc.Descendants(ns + "ResultSummary").FirstOrDefault());
+                testRun.Times = DeserializeTimes(GetDescendentFirstChild(doc, "Times"));
+                testRun.Results = DeserializeResults(GetDescendantCollection(doc, "UnitTestResult"));
+                testRun.TestDefinitions = DeserializeTestDefinitions(GetDescendantCollection(doc, "UnitTest"));
+                testRun.TestEntries = DeserializeTestEntries(GetDescendantCollection(doc, "TestEntry"));
+                testRun.TestLists = DeserializeTestLists(GetDescendantCollection(doc, "TestList"));
+                testRun.ResultSummary = DeserializeResultSummary(GetDescendentFirstChild(doc, "ResultSummary"));
+                testRun.TrxPath = trxPath;
             }
             return testRun;
+        }
+
+        private static IEnumerable<XElement> GetDescendantCollection(XContainer doc, string child)
+        {
+            var descendants = doc.Descendants(ns + child).ToArray();
+            return descendants.Any() ? descendants : doc.Descendants(child);
+        }
+
+        private static XElement GetDescendentFirstChild(XContainer doc, string child)
+        {
+            return doc.Descendants(ns + child).FirstOrDefault() ?? doc.Descendants(child).FirstOrDefault();
         }
 
         private static ResultSummary DeserializeResultSummary(XElement resultSummary)
@@ -143,7 +156,7 @@ namespace TRX_Merger.Utilities
             {
                 Outcome = resultSummary.GetAttributeValue("outcome"),
                 Counters = DeserializeCounters(resultSummary),
-                RunInfos = DeserializeRunInfos(resultSummary.Descendants(ns + "RunInfo"))
+                RunInfos = DeserializeRunInfos(GetDescendantCollection(resultSummary, "RunInfo"))
             };
 
             return res;
@@ -172,7 +185,7 @@ namespace TRX_Merger.Utilities
 
         private static string DeserializeText(XElement rf)
         {
-            var txt = rf.Descendants(ns + "Text").FirstOrDefault();
+            var txt = GetDescendentFirstChild(rf, "Text");
             if (txt == null)
                 return null;
 
@@ -181,7 +194,7 @@ namespace TRX_Merger.Utilities
 
         private static Counters DeserializeCounters(XElement resultSummary)
         {
-            var cc = resultSummary.Descendants(ns + "Counters").FirstOrDefault();
+            var cc = GetDescendentFirstChild(resultSummary, "Counters");
             if (cc == null)
                 return null;
 
@@ -271,7 +284,7 @@ namespace TRX_Merger.Utilities
 
         private static Execution DeserializeExecution(XElement unitTest)
         {
-            var exec = unitTest.Descendants(ns + "Execution").FirstOrDefault();
+            var exec = GetDescendentFirstChild(unitTest, "Execution");
             if (exec == null)
                 return null;
 
@@ -283,7 +296,7 @@ namespace TRX_Merger.Utilities
 
         private static TestMethod DeserializeTestMethod(XElement unitTest)
         {
-            var tm = unitTest.Descendants(ns + "TestMethod").FirstOrDefault();
+            var tm = GetDescendentFirstChild(unitTest, "TestMethod");
             if (tm == null)
                 return null;
 
@@ -342,20 +355,20 @@ namespace TRX_Merger.Utilities
 
         private static ErrorInfo DeserializeErrorInfo(XElement unitTestResult)
         {
-            var err = unitTestResult.Descendants(ns + "ErrorInfo").FirstOrDefault();
+            var err = GetDescendentFirstChild(unitTestResult, "ErrorInfo");
             if (err == null)
                 return null;
 
             return new ErrorInfo
             {
-                Message = err.Descendants(ns + "Message").FirstOrDefault().Value,
-                StackTrace = err.Descendants(ns + "StackTrace").FirstOrDefault()?.Value,
+                Message = GetDescendentFirstChild(err, "Message")?.Value,
+                StackTrace = GetDescendentFirstChild(err, "StackTrace")?.Value
             };
         }
 
         private static string DeserializeStdOut(XElement unitTestResult)
         {
-            var stdOut = unitTestResult.Descendants(ns + "StdOut").FirstOrDefault();
+            var stdOut = GetDescendentFirstChild(unitTestResult, "StdOut");
             if (stdOut == null)
                 return null;
 
@@ -364,7 +377,7 @@ namespace TRX_Merger.Utilities
 
         private static string DeserializeStdErr(XElement unitTestResult)
         {
-            var stdErr = unitTestResult.Descendants(ns + "StdErr").FirstOrDefault();
+            var stdErr = GetDescendentFirstChild(unitTestResult, "StdErr");
             if (stdErr == null)
                 return null;
 

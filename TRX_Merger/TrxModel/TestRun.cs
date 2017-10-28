@@ -24,5 +24,7 @@ namespace TRX_Merger.TrxModel
         public List<TestEntry> TestEntries { get; set; }
         public List<TestList> TestLists { get; set; }
         public ResultSummary ResultSummary { get; set; }
+
+        public string TrxPath { get; set; }
     }
 }
