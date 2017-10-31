@@ -82,8 +82,15 @@ namespace TRX_Merger
                     endString = tr.Times.Finish;
                 }
 
+                if (tr.ResultSummary.Outcome == "Error" ||
+                    tr.ResultSummary.Outcome == "Failed" ||
+                    tr.ResultSummary.Outcome == "Timeout" ||
+                    tr.ResultSummary.Outcome == "Aborted" ||
+                    tr.ResultSummary.Outcome == "Aborted")
+                {
+                    resultSummaryPassed = false;
+                }
 
-                resultSummaryPassed &= tr.ResultSummary.Outcome == "Passed";
                 resultSummary.RunInfos = resultSummary.RunInfos.Concat(tr.ResultSummary.RunInfos).ToList();
                 resultSummary.Counters.Aborted += tr.ResultSummary.Counters.Aborted;
                 resultSummary.Counters.Completed += tr.ResultSummary.Counters.Completed;
